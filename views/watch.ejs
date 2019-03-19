@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <meta http-equiv='cache-control' content='no-cache'>
+  <meta http-equiv='expires' content='0'>
+  <meta http-equiv='pragma' content='no-cache'>
+  <meta charset="utf-8">
+  <title>Watch IMD</title>
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+  
+
+  <style>
+    /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+
+    .map {
+      height: 50%;
+      width: 50%;
+    }
+
+    /* Optional: Makes the sample page fill the window. */
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    #map {
+      width: 50%;
+      height: 50%;
+    }
+
+    #floating-panel {
+      position: absolute;
+      top: 10px;
+      left: 25%;
+      z-index: 5;
+      background-color: #fff;
+      padding: 5px;
+      border: 1px solid #999;
+      text-align: center;
+
+      line-height: 30px;
+      padding-left: 10px;
+    }
+
+    #floating-panel {
+      background-color: #fff;
+      border: 1px solid #999;
+      left: 25%;
+      padding: 5px;
+      position: absolute;
+      top: 10px;
+      z-index: 5;
+    }
+
+    #description {
+      font-family: Roboto;
+      font-size: 15px;
+      font-weight: 300;
+    }
+
+    #infowindow-content .title {
+      font-weight: bold;
+    }
+
+    #infowindow-content {
+      display: none;
+    }
+
+    #map #infowindow-content {
+      display: inline;
+    }
+
+    .pac-card {
+      margin: 10px 10px 0 0;
+      border-radius: 2px 0 0 2px;
+      box-sizing: border-box;
+      -moz-box-sizing: border-box;
+      outline: none;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      background-color: #fff;
+      font-family: Roboto;
+    }
+
+    #pac-container {
+      padding-bottom: 12px;
+      margin-right: 12px;
+    }
+
+    .pac-controls {
+      display: inline-block;
+      padding: 5px 11px;
+    }
+
+    .pac-controls label {
+      font-family: Roboto;
+      font-size: 13px;
+      font-weight: 300;
+    }
+
+    #pac-input {
+      background-color: #fff;
+      font-family: Roboto;
+      font-size: 15px;
+      font-weight: 300;
+      margin-left: 12px;
+      padding: 0 11px 0 13px;
+      text-overflow: ellipsis;
+      width: 400px;
+    }
+
+    #pac-input:focus {
+      border-color: #4d90fe;
+    }
+
+    #title {
+      color: #fff;
+      background-color: #4d90fe;
+      font-size: 25px;
+      font-weight: 500;
+      padding: 6px 12px;
+    }
+
+    #target {
+      width: 345px;
+    }
+  </style>
+</head>
+
+<body>
+  <h3>Please choose a theme to explore Indices of Multiple Deprivation</h3>
+  <%if(data!==null){%>
+  <div id="floating-panel" style="left: 50%;">
+    <!--<button onclick="toggleHeatmap()">Toggle Heatmap</button>-->
+    <!--<button onclick="changeGradient()">Change gradient</button>-->
+    <button onclick="changeRadius()">Change radius</button>
+    <button onclick="changeOpacity()">Change opacity</button>
+
+  </div>
+  <input id="pac-input" class="controls" type="text" placeholder="Search Places" style="margin-left: 50%;">
+  <%}%>
+  <form action="/watch" method="post">
+    <div class="tab" align="right">
+      <input name="selectionImd" type="submit" class="tablinks" value="Health" id="Health">
+      <input name="selectionImd" type="submit" class="tablinks" value="Crime" id="Crime">
+      <input name="selectionImd" type="submit" class="tablinks" value="Employment" id="Employment">
+      <input name="selectionImd" type="submit" class="tablinks" value="Education" id="Education">
+      
+      
+
+      <%if(min!==null){%>
+        
+        <%console.log(min);%>
+
+        <div align="left" class="tablinks"><%-imd%> Score</div>
+        <div style="outline:auto;width:100%;height:22px;color:white;background: 
+          linear-gradient(to right, 
+          #66ff00 0%,
+          
+          rgba(249, 198, 0, 1) 50%,
+          
+          #ff0000 100%);">
+          <div style="float: right;">
+            <%-min%>    
+          </div>
+          <div style="float: left;">
+            <%-max%>
+          </div>
+        </div>
+      <%}%>
+      
+    </div>
+
+    <div id="map1" class="tabcontent">
+
+    </div>
+
+
+    <%if(data!==null){%>
+      <script src="/jquery-1.9.1.js"></script>
+      <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCyXjX7siNb4NQtTnukTcNrvpL9thPu1Zc&libraries=visualization,places">
+      </script>
+      <script>
+      var imdThis = <%-JSON.stringify(imd)%>;
+        var tablinks = document.getElementsByClassName("tablinks");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+    
+        // Show the current tab, and add an "active" class to the link that opened the tab
+        document.getElementById(imdThis).className += " active";
+        var map, heatmap;
+        var bundle = <%-JSON.stringify(data)%>;
+        var heatStack = [];
+
+        bundle.forEach(function (value, index, ar) {
+          var weight = parseFloat(value.weight);
+          var loc = new google.maps.LatLng(parseFloat(value.lat), parseFloat(value.long));
+
+          heatStack.push({
+            location: loc,
+            weight: weight,
+
+          });
+        });
+        map = new google.maps.Map(document.getElementById('map1'), {
+          zoom: 6,
+          center: {
+
+            lat: 52.5645,
+            lng: 1.4669
+          },
+          mapTypeId: 'terrain',
+          //rotateControl: true,
+          
+        });
+        //map.setTilt(45);
+
+        var opt = {
+          minZoom: 6,
+          maxZoom: 10
+        };
+        map.setOptions(opt);
+        heatmap = new google.maps.visualization.HeatmapLayer({
+          data: heatStack,
+          map: map,
+          maxIntensity: 0
+        });
+        
+        function reverse(array) {
+          var output = [];
+          while (array.length) {
+            output.push(array.pop());
+          }
+
+          return output;
+        }
+        var gradient = [
+          "rgba(65, 255, 0, 1)",
+          "rgba(102, 255, 0, 1)",
+          "rgba(147, 255, 0, 1)",
+          "rgba(193, 255, 0, 1)",
+          "rgba(238, 255, 0, 1)",
+          "rgba(244, 227, 0, 1)",
+          "rgba(249, 198, 0, 1)",
+          "rgba(255, 170, 0, 1)",
+          "rgba(255, 113, 0, 1)",
+          "rgba(255, 57, 0, 1)",
+          "rgba(255, 0, 0, 0)"
+        ];
+        heatmap.set('gradient', reverse(gradient));
+        console.log(heatmap)
+        heatmap.set('radius', 10);
+
+        function toggleHeatmap() {
+          heatmap.setMap(heatmap.getMap() ? null : map);
+        }
+
+        function changeGradient() {
+          var gradient = [
+            "rgba(102, 255, 0, 1)",
+          "rgba(102, 255, 0, 1)",
+          "rgba(147, 255, 0, 1)",
+          "rgba(193, 255, 0, 1)",
+          "rgba(238, 255, 0, 1)",
+          "rgba(244, 227, 0, 1)",
+          "rgba(249, 198, 0, 1)",
+          "rgba(255, 170, 0, 1)",
+          "rgba(255, 113, 0, 1)",
+          "rgba(255, 57, 0, 1)",
+          "rgba(255, 0, 0, 0)"
+          ];
+          var gradient1 = [
+            'rgba(0, 255, 255, 1)',
+          'rgba(0, 255, 255, 1)',
+          'rgba(0, 191, 255, 1)',
+          'rgba(0, 127, 255, 1)',
+          'rgba(0, 63, 255, 1)',
+          'rgba(0, 0, 255, 1)',
+          'rgba(0, 0, 223, 1)',
+          'rgba(0, 0, 191, 1)',
+          'rgba(0, 0, 159, 1)',
+          'rgba(0, 0, 127, 1)',
+          'rgba(63, 0, 91, 1)',
+          'rgba(127, 0, 63, 1)',
+          'rgba(191, 0, 31, 1)',
+          'rgba(255, 0, 0, 0)'
+          ];
+          if (heatmap.get('gradient') == reverse(gradient)) {
+            heatmap.set('gradient', reverse(gradient1))
+          } 
+          else {
+            heatmap.set('gradient', reverse(gradient))
+          }
+
+
+        }
+
+        function changeRadius() {
+          var radiInUse = heatmap.get('radius');
+          if (radiInUse == 10) {
+            heatmap.set('radius', 20)
+          } else {
+            heatmap.set('radius', 10)
+          }
+
+        }
+
+        function changeOpacity() {
+          heatmap.set('opacity', heatmap.get('opacity') ? null : 0.2);
+        }
+
+        var geocoder = new google.maps.Geocoder;
+
+
+        google.maps.event.addListener(map, 'click', function (event) {
+
+          var latlng = {
+            lat: parseFloat(event.latLng.lat()),
+            lng: parseFloat(event.latLng.lng())
+          };
+          map.panTo(latlng);
+          var imdValue = [];
+          var imdThis = <%-JSON.stringify(imd)%>;
+          var imdData = <%-JSON.stringify(imdData)%>
+          geocoder.geocode({
+            'location': latlng
+          }, function (results, status) {
+            if (status === 'OK') {
+              if (results[0]) {
+
+                function searchStringInArray(str, strArray) {
+                
+                  console.log("if had dis: ", str)
+                  for (var j = 0; j < strArray.length; j++) {
+                    if (str.match(strArray[j]["LocalAuthorityDistrictname"])) return j;
+                  }
+                  return -1;
+                }
+                var strToFind;
+                var rowNumber;
+                var postTown;
+                results.forEach(function(value){
+                  if (value.types[0] == "postal_town") 
+                  {
+                    postTown = value.address_components[0].long_name;
+                    
+                  }
+                });
+                for (var i = 0; i < results.length; i++) 
+                {
+                  if (results[i].types[0] == "administrative_area_level_3") 
+                  {
+                    console.log("District", results[i])
+                    strToFind = results[i].address_components[0].long_name;
+                    rowNumber = searchStringInArray(strToFind, imdData);
+                    console.log(rowNumber)
+                    break;
+                  } 
+                  else if (results[i].types[0] == "administrative_area_level_2") 
+                  {
+                    strToFind = results[i].address_components[0].long_name;
+                    rowNumber = searchStringInArray(strToFind, imdData);
+                    console.log(rowNumber)
+                    console.log("city", results[i])
+                    break;
+                  } 
+                  
+                }
+                  if (rowNumber !== -1) {
+                    var population = parseFloat(imdData[rowNumber]["Totalpopulation"]).toFixed(0)
+                    var imdDecile = 0;
+                    if (imdThis == 'Health') {
+                      imdDecile = parseFloat(imdData[rowNumber]["HealthDeprivationandDisabilityDecile"])
+                        .toFixed(0)
+                    } else if (imdThis == 'Crime') {
+                      imdDecile = parseFloat(imdData[rowNumber]["CrimeDecile"])
+                        .toFixed(0)
+                    } else if (imdThis == 'Employment') {
+                      imdDecile = parseFloat(imdData[rowNumber]["EmploymentDecile"])
+                        .toFixed(0)
+                    } else if (imdThis == 'Education') {
+                      imdDecile = parseFloat(imdData[rowNumber]["EducationSkillsandTrainingDecile"])
+                        .toFixed(0)
+                    }
+
+                    (document).getElementById("placeName").innerHTML = postTown + " ";
+                    (document).getElementById("districtName").innerHTML = strToFind + " ";
+                    var marker = new google.maps.Marker({
+                      position: latlng,
+                      map: map
+                    });
+                    var infowindow = new google.maps.InfoWindow;
+                    infowindow.setContent("<b>Town: </b>" + postTown + "<br><b>District: </b>" + strToFind +
+                     "<br><b>Mean " + imdThis + " decile:</b> " +
+                      imdDecile +
+                      "<br><b>Mean Population:</b> " + population);
+                    infowindow.open(map, marker);
+                    var xhr = new XMLHttpRequest();
+                    var place_name_url_encoded = encodeURI('("' + postTown + '"AND"' +
+                      imdThis + '")');
+                    console.log('news request',"https://newsapi.org/v2/everything?sources=bbc-news,the-guardian-uk&q=" +place_name_url_encoded +"&sortBy=popularity&apiKey=4eee6a0fd1ac4b97b84b00815012e406");
+                    xhr.open('GET',
+                      "https://newsapi.org/v2/everything?sources=bbc-news,the-guardian-uk&q=" +
+                      place_name_url_encoded +
+                      "&sortBy=popularity&apiKey=4eee6a0fd1ac4b97b84b00815012e406",
+                      true);
+                    xhr.send();
+                    xhr.onreadystatechange = processRequest;
+
+                    function processRequest(e) {
+                      if (xhr.readyState == 4 && xhr.status == 200) {
+                        console.log(xhr.responseText)
+                        var response = JSON.parse(xhr.responseText);
+                        (document).getElementById("news").innerHTML =
+                          "<h1>Article Headlines</h1>";
+                        response.articles.forEach(function (value, index, ar) {
+                          var myDate = new Date(value.publishedAt.toString());
+                          var final_date = myDate.getDate() + "-" + (myDate.getMonth() + 1) +
+                            "-" + myDate.getFullYear();
+                          if (value.author !== null) {
+                            (document).getElementById("news").innerHTML += "<br>" +
+                              "<table><tr><td><a target='_blank' href='" + value.url +
+                              "'><img src='" + value.urlToImage +
+                              "' width='50px' height='50px'></a></td><td>" +
+                              "<p>" + value.title + " <br><i style='font-size:  16px;'>by " +
+                              value.author + " <br>Date: " + final_date +
+                              "</i></p></td></tr></table>" +
+                              "<hr>";
+                          } else {
+                            (document).getElementById("news").innerHTML += "<br>" +
+                              "<table><tr><td><a target='_blank' href='" + value.url +
+                              "'><img src='" + value.urlToImage +
+                              "' width='50px' height='50px'></a></td><td>" +
+                              "<p>" + value.title +
+                              " <br><i style='font-size:  16px;'>by <a target='_blank' href=" +
+                              value.url + ">" +
+                              value.url + "</a>" + " <br>Date: " + final_date +
+                              " </i></p></td></tr></table>" +
+                              "<hr>";
+                          }
+
+                        });
+
+
+                        // alert(event.latLng.lat());
+                      }
+                    }
+                  }
+
+
+
+                  
+
+                
+
+                console.log(results)
+
+
+
+
+              };
+            } else {
+              window.alert('No results found');
+            }
+          });
+        });
+
+        // Create the search box and link it to the UI element.
+        searchPlace();
+
+        function searchPlace() {
+          var options = {
+            types: ['(regions)'],
+            componentRestrictions: {
+              country: "gb"
+            }
+          };
+
+
+
+          var input = document.getElementById('pac-input');
+          var searchBox = new google.maps.places.SearchBox(input);
+          var autocomplete = new google.maps.places.Autocomplete(input, options);
+
+
+          // Bias the SearchBox results towards current map's viewport.
+          map.addListener('bounds_changed', function () {
+            searchBox.setBounds(map.getBounds());
+          });
+
+          var markers = [];
+          // Listen for the event fired when the user selects a prediction and retrieve
+          // more details for that place.
+          searchBox.addListener('places_changed', function () {
+            var places = searchBox.getPlaces();
+
+            if (places.length == 0) {
+              return;
+            }
+
+            // Clear out the old markers.
+            markers.forEach(function (marker) {
+              marker.setMap(null);
+            });
+            markers = [];
+
+
+            // For each place, get the icon, name and location.
+            var bounds = new google.maps.LatLngBounds();
+            console.log(places)
+            for (var i = 0; i < places.length; i++) {
+              place = places[i];
+              if (!place.geometry) {
+                console.log("Returned place contains no geometry");
+                return;
+              }
+              var icon = {
+                url: place.icon,
+                size: new google.maps.Size(25, 25),
+                origin: new google.maps.Point(0, 0),
+                anchor: new google.maps.Point(17, 34),
+                scaledSize: new google.maps.Size(25, 25)
+              };
+
+              // Create a marker for each place.
+              var marker2 = new google.maps.Marker({
+                map: map,
+                icon: icon,
+                title: place.name,
+                position: place.geometry.location
+              })
+              markers.push(marker2);
+              var infowindow2 = new google.maps.InfoWindow;
+              // infowindow2.setContent(place.name);
+              // infowindow2.open(map, marker2);
+              if (place.geometry.viewport) {
+                // Only geocodes have viewport.
+                bounds.union(place.geometry.viewport);
+              } else {
+                bounds.extend(place.geometry.location);
+              }
+            }
+
+            map.fitBounds(bounds);
+          });
+        }
+      </script>
+      <div>
+
+        <table>
+          <tr>
+            <td>
+              <b>Index of Deprevation Domain: </b>
+            </td>
+            <td>
+              <%-imd%>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <b>Selected Town: </b>
+            </td>
+            <td id="placeName"></td>
+          </tr>
+          <tr>
+            <td> <b>District: </b>           </td>
+          <td id="districtName"></td>
+            
+          </tr>
+          <tr>
+            <td>
+              <i>News Section **Courtesy
+                <a href="https://newsapi.org">NewsApi.org</a>
+              </i>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <div id="news" style="Outline:none;margin-left:10%;width:80%">
+
+      </div>
+      <%}%>
+
+  </form>
+</body>
+
+</html>

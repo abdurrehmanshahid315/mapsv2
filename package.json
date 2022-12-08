@@ -24,7 +24,7 @@
     "csvtojson": "^2.0.3",
     "ejs": "^1.0.0",
     "ejs-lint": "^0.3.0",
-    "express": "^4.16.3",
+    "express": "^4.17.3",
     "express-validator": "^5.2.0",
     "mongodb": "^3.1.0-beta4",
     "npm": "^6.9.0",
